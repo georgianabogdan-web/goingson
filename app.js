@@ -25,7 +25,14 @@
   const fieldEnd = document.getElementById("event-end");
   const fieldCategory = document.getElementById("event-category");
   const fieldLink = document.getElementById("event-link");
+  const fieldImage = document.getElementById("event-image");
+  const imagePreview = document.getElementById("image-preview");
+  const imageUploadBtn = document.getElementById("image-upload-btn");
+  const imageRemoveBtn = document.getElementById("image-remove-btn");
   const fieldDetails = document.getElementById("event-details");
+
+  // Pending image data URL (set during file selection)
+  let pendingImageData = null;
 
   // --- Data helpers ---
 
@@ -116,6 +123,64 @@
     return `${formatDateShort(start)} – ${formatDateShort(end)}`;
   }
 
+  // --- Image helpers ---
+
+  function resizeImage(file, maxSize, callback) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = new Image();
+      img.onload = function () {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) {
+            h = Math.round((h * maxSize) / w);
+            w = maxSize;
+          } else {
+            w = Math.round((w * maxSize) / h);
+            h = maxSize;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function setImagePreview(dataUrl) {
+    if (dataUrl) {
+      imagePreview.style.backgroundImage = `url(${dataUrl})`;
+      imagePreview.classList.add("has-image");
+      imageRemoveBtn.hidden = false;
+    } else {
+      imagePreview.style.backgroundImage = "";
+      imagePreview.classList.remove("has-image");
+      imageRemoveBtn.hidden = true;
+    }
+  }
+
+  imageUploadBtn.addEventListener("click", () => fieldImage.click());
+
+  fieldImage.addEventListener("change", () => {
+    const file = fieldImage.files[0];
+    if (!file) return;
+    resizeImage(file, 800, (dataUrl) => {
+      pendingImageData = dataUrl;
+      setImagePreview(dataUrl);
+    });
+  });
+
+  imageRemoveBtn.addEventListener("click", () => {
+    pendingImageData = "";
+    fieldImage.value = "";
+    setImagePreview(null);
+  });
+
   // --- Rendering ---
 
   function render() {
@@ -147,8 +212,13 @@
 
     sorted.forEach((event) => {
       const card = document.createElement("article");
-      card.className = `event-card ${categoryColorClass(event.category)} ${event._status}`;
+      const hasImage = !!event.image;
+      card.className = `event-card ${categoryColorClass(event.category)} ${event._status}${hasImage ? " has-image" : ""}`;
       card.dataset.id = event.id;
+
+      if (hasImage) {
+        card.style.backgroundImage = `url(${event.image})`;
+      }
 
       card.innerHTML = `
         <span class="event-card-status ${event._status}">${statusLabel(event._status)}</span>
@@ -187,7 +257,12 @@
          </div>`
       : "";
 
+    const imageHtml = event.image
+      ? `<img class="detail-image" src="${event.image}" alt="${escapeHtml(event.name)}">`
+      : "";
+
     detailContent.innerHTML = `
+      ${imageHtml}
       <span class="detail-status ${status}">${statusLabel(status)}</span>
       <div class="detail-category">${escapeHtml(event.category || "")}</div>
       <div class="detail-name">${escapeHtml(event.name)}</div>
@@ -229,10 +304,14 @@
       fieldCategory.value = event.category || "";
       fieldLink.value = event.link || "";
       fieldDetails.value = event.details || "";
+      pendingImageData = null;
+      setImagePreview(event.image || null);
     } else {
       modalTitle.textContent = "Add Event";
       eventForm.reset();
       fieldId.value = "";
+      pendingImageData = null;
+      setImagePreview(null);
     }
     modalOverlay.hidden = false;
     fieldName.focus();
@@ -241,6 +320,8 @@
   function closeModal() {
     modalOverlay.hidden = true;
     eventForm.reset();
+    pendingImageData = null;
+    setImagePreview(null);
   }
 
   // --- Event handlers ---
@@ -264,6 +345,15 @@
 
     const events = loadEvents();
     const id = fieldId.value || generateId();
+    // Determine image: use pending if set, otherwise keep existing
+    let imageValue;
+    if (pendingImageData !== null) {
+      imageValue = pendingImageData;
+    } else {
+      const existing = events.find((ev) => ev.id === id);
+      imageValue = existing ? existing.image || "" : "";
+    }
+
     const eventData = {
       id,
       name: fieldName.value.trim(),
@@ -272,6 +362,7 @@
       start: fieldStart.value,
       end: fieldEnd.value,
       link: fieldLink.value.trim(),
+      image: imageValue,
       details: fieldDetails.value.trim(),
     };
 

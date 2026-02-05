@@ -163,6 +163,26 @@ main {
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-size: cover;
+  background-position: center;
+}
+
+.event-card.has-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  z-index: 1;
+}
+
+.event-card.has-image > * {
+  position: relative;
+  z-index: 2;
 }
 
 .event-card:hover {
@@ -326,6 +346,34 @@ main {
   margin-top: 1.25rem;
 }
 
+/* Image upload */
+.image-upload {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.image-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  background-color: #2c2c2e;
+  border: 1px solid #3a3a3c;
+  flex-shrink: 0;
+}
+
+.image-preview.has-image {
+  border-color: #64d2ff;
+}
+
+.image-remove-btn {
+  font-size: 0.75rem !important;
+  padding: 0.3rem 0.6rem !important;
+}
+
 /* Detail modal */
 .detail-modal {
   background: #1c1c1e;
@@ -380,6 +428,14 @@ main {
 .detail-status.past {
   background: rgba(142, 142, 147, 0.6);
   color: #fff;
+}
+
+.detail-image {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 1.25rem;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
 }
 
 .detail-category {
