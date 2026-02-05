@@ -24,6 +24,18 @@
           <option value="past">Past</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label for="filter-category">Category:</label>
+        <select id="filter-category">
+          <option value="all">All Categories</option>
+          <option value="Exhibition">Exhibition</option>
+          <option value="Concert">Concert</option>
+          <option value="Theatre">Theatre</option>
+          <option value="Contemporary Dance">Contemporary Dance</option>
+          <option value="Movie Festival">Movie Festival</option>
+          <option value="Music Festival">Music Festival</option>
+        </select>
+      </div>
     </section>
 
     <section id="events-list" class="events-list">
@@ -48,6 +60,19 @@
         <div class="form-group">
           <label for="event-location">Location</label>
           <input type="text" id="event-location" required placeholder="e.g. Central Park, NYC">
+        </div>
+
+        <div class="form-group">
+          <label for="event-category">Category</label>
+          <select id="event-category" required>
+            <option value="">Select a category</option>
+            <option value="Exhibition">Exhibition</option>
+            <option value="Concert">Concert</option>
+            <option value="Theatre">Theatre</option>
+            <option value="Contemporary Dance">Contemporary Dance</option>
+            <option value="Movie Festival">Movie Festival</option>
+            <option value="Music Festival">Music Festival</option>
+          </select>
         </div>
 
         <div class="form-row">

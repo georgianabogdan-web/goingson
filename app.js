@@ -11,6 +11,7 @@
   const modalTitle = document.getElementById("modal-title");
   const eventForm = document.getElementById("event-form");
   const filterSelect = document.getElementById("filter");
+  const filterCategory = document.getElementById("filter-category");
   const cancelBtn = document.getElementById("cancel-btn");
 
   // Form fields
@@ -19,6 +20,7 @@
   const fieldLocation = document.getElementById("event-location");
   const fieldStart = document.getElementById("event-start");
   const fieldEnd = document.getElementById("event-end");
+  const fieldCategory = document.getElementById("event-category");
   const fieldDetails = document.getElementById("event-details");
 
   // --- Data helpers ---
@@ -90,11 +92,13 @@
   function render() {
     const events = loadEvents();
     const filter = filterSelect.value;
+    const catFilter = filterCategory.value;
 
     // Sort: ongoing first, then upcoming (soonest first), then past (most recent first)
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
       .filter((e) => filter === "all" || e._status === filter)
+      .filter((e) => catFilter === "all" || e.category === catFilter)
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
         if (order[a._status] !== order[b._status])
@@ -124,7 +128,10 @@
       card.innerHTML = `
         <div class="event-header">
           <span class="event-name">${escapeHtml(event.name)}</span>
-          <span class="event-status ${event._status}">${statusLabel(event._status)}</span>
+          <div class="event-badges">
+            <span class="event-category">${escapeHtml(event.category || "")}</span>
+            <span class="event-status ${event._status}">${statusLabel(event._status)}</span>
+          </div>
         </div>
         <div class="event-meta">
           <span>${escapeHtml(event.location)}</span>
@@ -157,6 +164,7 @@
       fieldLocation.value = event.location;
       fieldStart.value = event.start;
       fieldEnd.value = event.end;
+      fieldCategory.value = event.category || "";
       fieldDetails.value = event.details || "";
     } else {
       modalTitle.textContent = "Add Event";
@@ -194,6 +202,7 @@
       id,
       name: fieldName.value.trim(),
       location: fieldLocation.value.trim(),
+      category: fieldCategory.value,
       start: fieldStart.value,
       end: fieldEnd.value,
       details: fieldDetails.value.trim(),
@@ -237,6 +246,7 @@
   });
 
   filterSelect.addEventListener("change", render);
+  filterCategory.addEventListener("change", render);
 
   // --- Initial render ---
   render();
