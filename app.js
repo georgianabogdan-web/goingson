@@ -190,7 +190,11 @@
 
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
-      .filter((e) => filter === "all" || e._status === filter)
+      .filter((e) => {
+        if (filter === "all") return true;
+        if (filter === "attended") return e.attended;
+        return e._status === filter;
+      })
       .filter((e) => catFilter === "all" || e.category === catFilter)
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
@@ -220,8 +224,13 @@
         card.style.backgroundImage = `url(${event.image})`;
       }
 
+      const attendedBadge = event.attended
+        ? `<span class="event-card-attended">Attended</span>`
+        : "";
+
       card.innerHTML = `
         <span class="event-card-status ${event._status}">${statusLabel(event._status)}</span>
+        ${attendedBadge}
         <span class="event-card-category">${escapeHtml(event.category || "")}</span>
         <span class="event-card-name">${escapeHtml(event.name)}</span>
         <span class="event-card-date">${formatRangeShort(event.start, event.end)}</span>
@@ -279,6 +288,9 @@
       </div>
       ${detailsHtml}
       <div class="detail-actions">
+        <button class="btn btn-attended${event.attended ? " is-attended" : ""}" data-id="${event.id}">
+          ${event.attended ? "Attended" : "Mark as Attended"}
+        </button>
         <button class="btn btn-edit" data-id="${event.id}">Edit</button>
         <button class="btn btn-danger" data-id="${event.id}">Delete</button>
       </div>
@@ -401,6 +413,17 @@
 
     const id = btn.dataset.id;
     const events = loadEvents();
+
+    if (btn.classList.contains("btn-attended")) {
+      const event = events.find((ev) => ev.id === id);
+      if (event) {
+        event.attended = !event.attended;
+        saveEvents(events);
+        openDetail(event);
+        render();
+      }
+      return;
+    }
 
     if (btn.classList.contains("btn-edit")) {
       closeDetail();

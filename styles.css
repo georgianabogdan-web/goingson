@@ -124,6 +124,27 @@ main {
   background: rgba(255, 69, 58, 0.1);
 }
 
+.btn-attended {
+  background: transparent;
+  color: #ffd60a;
+  border: 1px solid #ffd60a;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+}
+
+.btn-attended:hover {
+  background: rgba(255, 214, 10, 0.1);
+}
+
+.btn-attended.is-attended {
+  background: #ffd60a;
+  color: #121212;
+}
+
+.btn-attended.is-attended:hover {
+  background: #e6c009;
+}
+
 .btn-edit {
   background: transparent;
   color: #fff;
@@ -220,6 +241,21 @@ main {
   background: rgba(142, 142, 147, 0.6);
   color: #fff;
   opacity: 1;
+}
+
+.event-card-attended {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  background: #ffd60a;
+  color: #121212;
+  z-index: 2;
 }
 
 .event-card-category {
