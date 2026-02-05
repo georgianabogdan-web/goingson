@@ -8,37 +8,39 @@
 </head>
 <body>
   <header>
-    <h1>Going On</h1>
+    <h1>GOING ON</h1>
     <p class="subtitle">Keep track of events you don't want to miss</p>
   </header>
 
   <main>
     <section class="controls">
       <button id="add-event-btn" class="btn btn-primary">+ Add Event</button>
-      <div class="filter-group">
-        <label for="filter">Show:</label>
-        <select id="filter">
-          <option value="all">All Events</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="ongoing">Happening Now</option>
-          <option value="past">Past</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-category">Category:</label>
-        <select id="filter-category">
-          <option value="all">All Categories</option>
-          <option value="Exhibition">Exhibition</option>
-          <option value="Concert">Concert</option>
-          <option value="Theatre">Theatre</option>
-          <option value="Contemporary Dance">Contemporary Dance</option>
-          <option value="Movie Festival">Movie Festival</option>
-          <option value="Music Festival">Music Festival</option>
-        </select>
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filter">Show:</label>
+          <select id="filter">
+            <option value="all">All Events</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="ongoing">Happening Now</option>
+            <option value="past">Past</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-category">Category:</label>
+          <select id="filter-category">
+            <option value="all">All Categories</option>
+            <option value="Exhibition">Exhibition</option>
+            <option value="Concert">Concert</option>
+            <option value="Theatre">Theatre</option>
+            <option value="Contemporary Dance">Contemporary Dance</option>
+            <option value="Movie Festival">Movie Festival</option>
+            <option value="Music Festival">Music Festival</option>
+          </select>
+        </div>
       </div>
     </section>
 
-    <section id="events-list" class="events-list">
+    <section id="events-grid" class="events-grid">
       <!-- Events rendered here by JS -->
     </section>
 
@@ -87,6 +89,11 @@
         </div>
 
         <div class="form-group">
+          <label for="event-link">Link</label>
+          <input type="url" id="event-link" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
           <label for="event-details">Details</label>
           <textarea id="event-details" rows="3" placeholder="What's this event about?"></textarea>
         </div>
@@ -96,6 +103,14 @@
           <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Event Detail Overlay -->
+  <div id="detail-overlay" class="modal-overlay" hidden>
+    <div class="detail-modal">
+      <button id="detail-close" class="detail-close">&times;</button>
+      <div id="detail-content"></div>
     </div>
   </div>
 

@@ -4,7 +4,7 @@
   const STORAGE_KEY = "goingson_events";
 
   // DOM elements
-  const eventsList = document.getElementById("events-list");
+  const eventsGrid = document.getElementById("events-grid");
   const noEvents = document.getElementById("no-events");
   const addEventBtn = document.getElementById("add-event-btn");
   const modalOverlay = document.getElementById("modal-overlay");
@@ -13,6 +13,9 @@
   const filterSelect = document.getElementById("filter");
   const filterCategory = document.getElementById("filter-category");
   const cancelBtn = document.getElementById("cancel-btn");
+  const detailOverlay = document.getElementById("detail-overlay");
+  const detailContent = document.getElementById("detail-content");
+  const detailClose = document.getElementById("detail-close");
 
   // Form fields
   const fieldId = document.getElementById("event-id");
@@ -21,6 +24,7 @@
   const fieldStart = document.getElementById("event-start");
   const fieldEnd = document.getElementById("event-end");
   const fieldCategory = document.getElementById("event-category");
+  const fieldLink = document.getElementById("event-link");
   const fieldDetails = document.getElementById("event-details");
 
   // --- Data helpers ---
@@ -58,6 +62,13 @@
     return "Past";
   }
 
+  // --- Category to CSS class ---
+
+  function categoryColorClass(category) {
+    if (!category) return "card-color-exhibition";
+    return "card-color-" + category.toLowerCase().replace(/\s+/g, "-");
+  }
+
   // --- Formatting ---
 
   function formatDate(isoString) {
@@ -87,6 +98,24 @@
     return `${formatDate(start)} ${formatTime(start)} – ${formatDate(end)} ${formatTime(end)}`;
   }
 
+  function formatDateShort(isoString) {
+    const d = new Date(isoString);
+    return d.toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function formatRangeShort(start, end) {
+    const sameDay =
+      new Date(start).toDateString() === new Date(end).toDateString();
+    if (sameDay) {
+      return formatDateShort(start);
+    }
+    return `${formatDateShort(start)} – ${formatDateShort(end)}`;
+  }
+
   // --- Rendering ---
 
   function render() {
@@ -94,7 +123,6 @@
     const filter = filterSelect.value;
     const catFilter = filterCategory.value;
 
-    // Sort: ongoing first, then upcoming (soonest first), then past (most recent first)
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
       .filter((e) => filter === "all" || e._status === filter)
@@ -108,7 +136,7 @@
         return new Date(a.start) - new Date(b.start);
       });
 
-    eventsList.innerHTML = "";
+    eventsGrid.innerHTML = "";
 
     if (sorted.length === 0) {
       noEvents.hidden = false;
@@ -119,32 +147,18 @@
 
     sorted.forEach((event) => {
       const card = document.createElement("article");
-      card.className = `event-card ${event._status}`;
-
-      const detailsHtml = event.details
-        ? `<p class="event-details">${escapeHtml(event.details)}</p>`
-        : "";
+      card.className = `event-card ${categoryColorClass(event.category)} ${event._status}`;
+      card.dataset.id = event.id;
 
       card.innerHTML = `
-        <div class="event-header">
-          <span class="event-name">${escapeHtml(event.name)}</span>
-          <div class="event-badges">
-            <span class="event-category">${escapeHtml(event.category || "")}</span>
-            <span class="event-status ${event._status}">${statusLabel(event._status)}</span>
-          </div>
-        </div>
-        <div class="event-meta">
-          <span>${escapeHtml(event.location)}</span>
-          <span>${formatRange(event.start, event.end)}</span>
-        </div>
-        ${detailsHtml}
-        <div class="event-actions">
-          <button class="btn btn-edit" data-id="${event.id}">Edit</button>
-          <button class="btn btn-danger" data-id="${event.id}">Delete</button>
-        </div>
+        <span class="event-card-status ${event._status}">${statusLabel(event._status)}</span>
+        <span class="event-card-category">${escapeHtml(event.category || "")}</span>
+        <span class="event-card-name">${escapeHtml(event.name)}</span>
+        <span class="event-card-date">${formatRangeShort(event.start, event.end)}</span>
+        <span class="event-card-location">${escapeHtml(event.location)}</span>
       `;
 
-      eventsList.appendChild(card);
+      eventsGrid.appendChild(card);
     });
   }
 
@@ -154,7 +168,55 @@
     return div.innerHTML;
   }
 
-  // --- Modal ---
+  // --- Detail overlay ---
+
+  function openDetail(event) {
+    const status = getStatus(event);
+
+    const linkHtml = event.link
+      ? `<div class="detail-row">
+           <span class="detail-label">Link</span>
+           <span class="detail-value"><a href="${escapeHtml(event.link)}" target="_blank" rel="noopener">${escapeHtml(event.link)}</a></span>
+         </div>`
+      : "";
+
+    const detailsHtml = event.details
+      ? `<div class="detail-description">
+           <h3>Details</h3>
+           <p>${escapeHtml(event.details)}</p>
+         </div>`
+      : "";
+
+    detailContent.innerHTML = `
+      <span class="detail-status ${status}">${statusLabel(status)}</span>
+      <div class="detail-category">${escapeHtml(event.category || "")}</div>
+      <div class="detail-name">${escapeHtml(event.name)}</div>
+      <div class="detail-info">
+        <div class="detail-row">
+          <span class="detail-label">When</span>
+          <span class="detail-value">${formatRange(event.start, event.end)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Where</span>
+          <span class="detail-value">${escapeHtml(event.location)}</span>
+        </div>
+        ${linkHtml}
+      </div>
+      ${detailsHtml}
+      <div class="detail-actions">
+        <button class="btn btn-edit" data-id="${event.id}">Edit</button>
+        <button class="btn btn-danger" data-id="${event.id}">Delete</button>
+      </div>
+    `;
+
+    detailOverlay.hidden = false;
+  }
+
+  function closeDetail() {
+    detailOverlay.hidden = true;
+  }
+
+  // --- Add/Edit modal ---
 
   function openModal(event) {
     if (event) {
@@ -165,6 +227,7 @@
       fieldStart.value = event.start;
       fieldEnd.value = event.end;
       fieldCategory.value = event.category || "";
+      fieldLink.value = event.link || "";
       fieldDetails.value = event.details || "";
     } else {
       modalTitle.textContent = "Add Event";
@@ -190,7 +253,10 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modalOverlay.hidden) closeModal();
+    if (e.key === "Escape") {
+      if (!modalOverlay.hidden) closeModal();
+      if (!detailOverlay.hidden) closeDetail();
+    }
   });
 
   eventForm.addEventListener("submit", (e) => {
@@ -205,6 +271,7 @@
       category: fieldCategory.value,
       start: fieldStart.value,
       end: fieldEnd.value,
+      link: fieldLink.value.trim(),
       details: fieldDetails.value.trim(),
     };
 
@@ -225,7 +292,19 @@
     render();
   });
 
-  eventsList.addEventListener("click", (e) => {
+  // Click card to open detail
+  eventsGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".event-card");
+    if (!card) return;
+
+    const id = card.dataset.id;
+    const events = loadEvents();
+    const event = events.find((ev) => ev.id === id);
+    if (event) openDetail(event);
+  });
+
+  // Edit / Delete from detail overlay
+  detailContent.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
 
@@ -233,6 +312,7 @@
     const events = loadEvents();
 
     if (btn.classList.contains("btn-edit")) {
+      closeDetail();
       const event = events.find((ev) => ev.id === id);
       if (event) openModal(event);
     }
@@ -241,8 +321,14 @@
       if (!confirm("Delete this event?")) return;
       const updated = events.filter((ev) => ev.id !== id);
       saveEvents(updated);
+      closeDetail();
       render();
     }
+  });
+
+  detailClose.addEventListener("click", closeDetail);
+  detailOverlay.addEventListener("click", (e) => {
+    if (e.target === detailOverlay) closeDetail();
   });
 
   filterSelect.addEventListener("change", render);
