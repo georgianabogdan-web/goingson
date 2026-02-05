@@ -56,10 +56,11 @@
 
   function getStatus(event) {
     const now = new Date();
-    const start = new Date(event.start);
-    const end = new Date(event.end);
+    now.setHours(0, 0, 0, 0);
+    const start = new Date(event.start + "T00:00:00");
+    const end = new Date(event.end + "T23:59:59");
     if (now < start) return "upcoming";
-    if (now >= start && now <= end) return "ongoing";
+    if (now <= end) return "ongoing";
     return "past";
   }
 
@@ -78,8 +79,8 @@
 
   // --- Formatting ---
 
-  function formatDate(isoString) {
-    const d = new Date(isoString);
+  function formatDate(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
     return d.toLocaleDateString(undefined, {
       weekday: "short",
       year: "numeric",
@@ -88,25 +89,8 @@
     });
   }
 
-  function formatTime(isoString) {
-    const d = new Date(isoString);
-    return d.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function formatRange(start, end) {
-    const sameDay =
-      new Date(start).toDateString() === new Date(end).toDateString();
-    if (sameDay) {
-      return `${formatDate(start)}, ${formatTime(start)} – ${formatTime(end)}`;
-    }
-    return `${formatDate(start)} ${formatTime(start)} – ${formatDate(end)} ${formatTime(end)}`;
-  }
-
-  function formatDateShort(isoString) {
-    const d = new Date(isoString);
+  function formatDateShort(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
     return d.toLocaleDateString(undefined, {
       day: "numeric",
       month: "short",
@@ -114,12 +98,13 @@
     });
   }
 
+  function formatRange(start, end) {
+    if (start === end) return formatDate(start);
+    return `${formatDate(start)} – ${formatDate(end)}`;
+  }
+
   function formatRangeShort(start, end) {
-    const sameDay =
-      new Date(start).toDateString() === new Date(end).toDateString();
-    if (sameDay) {
-      return formatDateShort(start);
-    }
+    if (start === end) return formatDateShort(start);
     return `${formatDateShort(start)} – ${formatDateShort(end)}`;
   }
 
