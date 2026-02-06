@@ -1,0 +1,12 @@
+{
+  "name": "goingson",
+  "version": "1.0.0",
+  "description": "Event tracking app — Things I don't want to miss",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
