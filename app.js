@@ -3,10 +3,14 @@
 
   const STORAGE_KEY = "goingson_events";
 
+  // Shared events loaded from events.json
+  let sharedEvents = [];
+
   // DOM elements
   const eventsGrid = document.getElementById("events-grid");
   const noEvents = document.getElementById("no-events");
   const addEventBtn = document.getElementById("add-event-btn");
+  const exportBtn = document.getElementById("export-btn");
   const modalOverlay = document.getElementById("modal-overlay");
   const modalTitle = document.getElementById("modal-title");
   const eventForm = document.getElementById("event-form");
@@ -37,16 +41,78 @@
 
   // --- Data helpers ---
 
-  function loadEvents() {
+  function loadLocalOverrides() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
     } catch {
-      return [];
+      return {};
     }
   }
 
-  function saveEvents(events) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  function saveLocalOverrides(overrides) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+  }
+
+  function loadEvents() {
+    const overrides = loadLocalOverrides();
+    // Start with shared events, apply local overrides
+    const merged = new Map();
+    sharedEvents.forEach((e) => merged.set(e.id, { ...e }));
+    // Apply overrides: edits, additions, and deletions
+    if (overrides.edits) {
+      Object.entries(overrides.edits).forEach(([id, data]) => {
+        merged.set(id, data);
+      });
+    }
+    if (overrides.added) {
+      overrides.added.forEach((e) => merged.set(e.id, e));
+    }
+    if (overrides.deleted) {
+      overrides.deleted.forEach((id) => merged.delete(id));
+    }
+    return [...merged.values()];
+  }
+
+  function saveEvent(eventData) {
+    const overrides = loadLocalOverrides();
+    const isShared = sharedEvents.some((e) => e.id === eventData.id);
+    if (isShared) {
+      if (!overrides.edits) overrides.edits = {};
+      overrides.edits[eventData.id] = eventData;
+    } else {
+      if (!overrides.added) overrides.added = [];
+      const idx = overrides.added.findIndex((e) => e.id === eventData.id);
+      if (idx >= 0) {
+        overrides.added[idx] = eventData;
+      } else {
+        overrides.added.push(eventData);
+      }
+    }
+    saveLocalOverrides(overrides);
+  }
+
+  function deleteEvent(id) {
+    const overrides = loadLocalOverrides();
+    const isShared = sharedEvents.some((e) => e.id === id);
+    if (isShared) {
+      if (!overrides.deleted) overrides.deleted = [];
+      if (!overrides.deleted.includes(id)) overrides.deleted.push(id);
+      if (overrides.edits) delete overrides.edits[id];
+    } else {
+      if (overrides.added) {
+        overrides.added = overrides.added.filter((e) => e.id !== id);
+      }
+    }
+    saveLocalOverrides(overrides);
+  }
+
+  function toggleAttended(id) {
+    const events = loadEvents();
+    const event = events.find((e) => e.id === id);
+    if (!event) return null;
+    event.attended = !event.attended;
+    saveEvent(event);
+    return event;
   }
 
   function generateId() {
@@ -406,19 +472,18 @@
       details: fieldDetails.value.trim(),
     };
 
+    // Preserve attended status if editing
+    const existingEvent = events.find((ev) => ev.id === id);
+    if (existingEvent && existingEvent.attended) {
+      eventData.attended = true;
+    }
+
     if (new Date(eventData.end) <= new Date(eventData.start)) {
       alert("End date must be after start date.");
       return;
     }
 
-    const existingIndex = events.findIndex((ev) => ev.id === id);
-    if (existingIndex >= 0) {
-      events[existingIndex] = eventData;
-    } else {
-      events.push(eventData);
-    }
-
-    saveEvents(events);
+    saveEvent(eventData);
     closeModal();
     render();
   });
@@ -443,10 +508,8 @@
     const events = loadEvents();
 
     if (btn.classList.contains("btn-attended")) {
-      const event = events.find((ev) => ev.id === id);
+      const event = toggleAttended(id);
       if (event) {
-        event.attended = !event.attended;
-        saveEvents(events);
         openDetail(event);
         render();
       }
@@ -461,8 +524,7 @@
 
     if (btn.classList.contains("btn-danger")) {
       if (!confirm("Delete this event?")) return;
-      const updated = events.filter((ev) => ev.id !== id);
-      saveEvents(updated);
+      deleteEvent(id);
       closeDetail();
       render();
     }
@@ -477,6 +539,30 @@
   filterMonth.addEventListener("change", render);
   filterCategory.addEventListener("change", render);
 
-  // --- Initial render ---
-  render();
+  // --- Export ---
+
+  exportBtn.addEventListener("click", () => {
+    const events = loadEvents();
+    const json = JSON.stringify(events, null, 2);
+    const blob = new Blob([json + "\n"], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "events.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // --- Initial load ---
+
+  fetch("events.json")
+    .then((res) => (res.ok ? res.json() : []))
+    .then((data) => {
+      sharedEvents = data;
+      render();
+    })
+    .catch(() => {
+      sharedEvents = [];
+      render();
+    });
 })();
