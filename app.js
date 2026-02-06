@@ -11,6 +11,7 @@
   const modalTitle = document.getElementById("modal-title");
   const eventForm = document.getElementById("event-form");
   const filterSelect = document.getElementById("filter");
+  const filterMonth = document.getElementById("filter-month");
   const filterCategory = document.getElementById("filter-category");
   const cancelBtn = document.getElementById("cancel-btn");
   const detailOverlay = document.getElementById("detail-overlay");
@@ -166,11 +167,52 @@
     setImagePreview(null);
   });
 
+  // --- Month helpers ---
+
+  function getEventMonth(dateStr) {
+    return dateStr.slice(0, 7); // "YYYY-MM"
+  }
+
+  function formatMonth(ym) {
+    const [year, month] = ym.split("-");
+    const d = new Date(Number(year), Number(month) - 1);
+    return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }
+
+  function populateMonthFilter(events) {
+    const months = new Set();
+    events.forEach((e) => {
+      months.add(getEventMonth(e.start));
+      months.add(getEventMonth(e.end));
+    });
+    const sorted = [...months].sort();
+    const current = filterMonth.value;
+    filterMonth.innerHTML = '<option value="all">All Months</option>';
+    sorted.forEach((ym) => {
+      const opt = document.createElement("option");
+      opt.value = ym;
+      opt.textContent = formatMonth(ym);
+      filterMonth.appendChild(opt);
+    });
+    // Restore selection if still valid
+    if (sorted.includes(current)) {
+      filterMonth.value = current;
+    }
+  }
+
+  function eventOverlapsMonth(event, ym) {
+    const startMonth = getEventMonth(event.start);
+    const endMonth = getEventMonth(event.end);
+    return startMonth <= ym && endMonth >= ym;
+  }
+
   // --- Rendering ---
 
   function render() {
     const events = loadEvents();
+    populateMonthFilter(events);
     const filter = filterSelect.value;
+    const monthFilter = filterMonth.value;
     const catFilter = filterCategory.value;
 
     const sorted = events
@@ -180,6 +222,7 @@
         if (filter === "attended") return e.attended;
         return e._status === filter;
       })
+      .filter((e) => monthFilter === "all" || eventOverlapsMonth(e, monthFilter))
       .filter((e) => catFilter === "all" || e.category === catFilter)
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
@@ -431,6 +474,7 @@
   });
 
   filterSelect.addEventListener("change", render);
+  filterMonth.addEventListener("change", render);
   filterCategory.addEventListener("change", render);
 
   // --- Initial render ---
