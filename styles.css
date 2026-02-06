@@ -391,6 +391,34 @@ main {
 }
 
 /* Image upload */
+/* Link input row */
+.link-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.link-input-row input {
+  flex: 1;
+}
+
+.link-input-row .btn {
+  flex-shrink: 0;
+}
+
+.fetch-status {
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+  color: #8e8e93;
+}
+
+.fetch-status.success {
+  color: #30d158;
+}
+
+.fetch-status.error {
+  color: #ff453a;
+}
+
 .image-upload {
   display: flex;
   align-items: center;

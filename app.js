@@ -235,6 +235,132 @@
     setImagePreview(null);
   });
 
+  // --- URL fetch / auto-fill ---
+
+  const fetchBtn = document.getElementById("fetch-btn");
+  const fetchStatus = document.getElementById("fetch-status");
+
+  function showFetchStatus(msg, type) {
+    fetchStatus.textContent = msg;
+    fetchStatus.className = "fetch-status " + type;
+    fetchStatus.hidden = false;
+  }
+
+  function toDateStr(d) {
+    // Return YYYY-MM-DD from a Date or date-like string
+    if (!d) return "";
+    const parsed = new Date(d);
+    if (isNaN(parsed)) return "";
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function parseEventPage(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const result = {};
+
+    // Try JSON-LD structured data first (most reliable)
+    const ldScripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of ldScripts) {
+      try {
+        let data = JSON.parse(script.textContent);
+        // Handle @graph arrays
+        if (data["@graph"]) data = data["@graph"];
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item["@type"] === "Event" || item["@type"] === "MusicEvent" ||
+              item["@type"] === "TheaterEvent" || item["@type"] === "Festival" ||
+              (Array.isArray(item["@type"]) && item["@type"].some(t => t.includes("Event")))) {
+            if (item.name) result.name = item.name;
+            if (item.startDate) result.start = toDateStr(item.startDate);
+            if (item.endDate) result.end = toDateStr(item.endDate);
+            if (!result.end && result.start) result.end = result.start;
+            if (item.description) result.details = item.description;
+            // Location
+            const loc = item.location;
+            if (loc) {
+              if (typeof loc === "string") {
+                result.venue = loc;
+              } else if (loc.name) {
+                result.venue = loc.name;
+              }
+              if (loc.address) {
+                const addr = loc.address;
+                if (typeof addr === "string") {
+                  result.city = addr;
+                } else if (addr.addressLocality) {
+                  result.city = addr.addressLocality;
+                }
+              }
+            }
+            break;
+          }
+        }
+      } catch { /* skip bad JSON-LD */ }
+    }
+
+    // Fill gaps from Open Graph meta tags
+    if (!result.name) {
+      const ogTitle = doc.querySelector('meta[property="og:title"]');
+      if (ogTitle) result.name = ogTitle.content;
+    }
+    if (!result.details) {
+      const ogDesc = doc.querySelector('meta[property="og:description"]');
+      if (ogDesc) result.details = ogDesc.content;
+    }
+
+    // Fill gaps from regular meta tags
+    if (!result.name) {
+      const title = doc.querySelector("title");
+      if (title) result.name = title.textContent.split("|")[0].split("–")[0].split("-")[0].trim();
+    }
+    if (!result.details) {
+      const desc = doc.querySelector('meta[name="description"]');
+      if (desc) result.details = desc.content;
+    }
+
+    return result;
+  }
+
+  fetchBtn.addEventListener("click", async () => {
+    const url = fieldLink.value.trim();
+    if (!url) {
+      showFetchStatus("Enter a URL first.", "error");
+      return;
+    }
+
+    showFetchStatus("Fetching...", "");
+    fetchBtn.disabled = true;
+
+    try {
+      const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error("Could not fetch page");
+      const html = await res.text();
+      const data = parseEventPage(html);
+
+      let filled = 0;
+      if (data.name && !fieldName.value) { fieldName.value = data.name; filled++; }
+      if (data.venue && !fieldVenue.value) { fieldVenue.value = data.venue; filled++; }
+      if (data.city && !fieldCity.value) { fieldCity.value = data.city; filled++; }
+      if (data.start && !fieldStart.value) { fieldStart.value = data.start; filled++; }
+      if (data.end && !fieldEnd.value) { fieldEnd.value = data.end; filled++; }
+      if (data.details && !fieldDetails.value) { fieldDetails.value = data.details; filled++; }
+
+      if (filled > 0) {
+        showFetchStatus(`Filled ${filled} field${filled > 1 ? "s" : ""}. Review and adjust as needed.`, "success");
+      } else {
+        showFetchStatus("Couldn't extract event details from this page. Fill in manually.", "error");
+      }
+    } catch {
+      showFetchStatus("Failed to fetch. You may need to fill in manually.", "error");
+    }
+
+    fetchBtn.disabled = false;
+  });
+
   // --- Month helpers ---
 
   function getEventMonth(dateStr) {
@@ -450,12 +576,14 @@
       pendingImageData = null;
       setImagePreview(null);
     }
+    fetchStatus.hidden = true;
     modalOverlay.hidden = false;
-    fieldName.focus();
+    fieldLink.focus();
   }
 
   function closeModal() {
     modalOverlay.hidden = true;
+    fetchStatus.hidden = true;
     eventForm.reset();
     pendingImageData = null;
     setImagePreview(null);

@@ -69,6 +69,15 @@
         <input type="hidden" id="event-id">
 
         <div class="form-group">
+          <label for="event-link">Link</label>
+          <div class="link-input-row">
+            <input type="url" id="event-link" placeholder="https://...">
+            <button type="button" id="fetch-btn" class="btn btn-secondary">Fetch</button>
+          </div>
+          <p id="fetch-status" class="fetch-status" hidden></p>
+        </div>
+
+        <div class="form-group">
           <label for="event-name">Name</label>
           <input type="text" id="event-name" required placeholder="e.g. Jazz Festival">
         </div>
@@ -106,11 +115,6 @@
             <label for="event-end">Ends</label>
             <input type="date" id="event-end" required>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="event-link">Link</label>
-          <input type="url" id="event-link" placeholder="https://...">
         </div>
 
         <div class="form-group">
