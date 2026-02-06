@@ -45,7 +45,15 @@
 
   function loadLocalOverrides() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!data) return {};
+      // Migrate old format: if it's an array, convert to overrides format
+      if (Array.isArray(data)) {
+        const migrated = { added: data };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        return migrated;
+      }
+      return data;
     } catch {
       return {};
     }
