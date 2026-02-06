@@ -45,6 +45,12 @@
             <option value="Music Festival">Music Festival</option>
           </select>
         </div>
+        <div class="filter-group">
+          <label for="filter-city">City:</label>
+          <select id="filter-city">
+            <option value="all">All Cities</option>
+          </select>
+        </div>
       </div>
     </section>
 
@@ -67,9 +73,15 @@
           <input type="text" id="event-name" required placeholder="e.g. Jazz Festival">
         </div>
 
-        <div class="form-group">
-          <label for="event-location">Location</label>
-          <input type="text" id="event-location" required placeholder="e.g. Central Park, NYC">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="event-venue">Venue</label>
+            <input type="text" id="event-venue" required placeholder="e.g. Central Park">
+          </div>
+          <div class="form-group">
+            <label for="event-city">City</label>
+            <input type="text" id="event-city" required placeholder="e.g. New York">
+          </div>
         </div>
 
         <div class="form-group">

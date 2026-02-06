@@ -17,6 +17,7 @@
   const filterSelect = document.getElementById("filter");
   const filterMonth = document.getElementById("filter-month");
   const filterCategory = document.getElementById("filter-category");
+  const filterCity = document.getElementById("filter-city");
   const cancelBtn = document.getElementById("cancel-btn");
   const detailOverlay = document.getElementById("detail-overlay");
   const detailContent = document.getElementById("detail-content");
@@ -25,7 +26,8 @@
   // Form fields
   const fieldId = document.getElementById("event-id");
   const fieldName = document.getElementById("event-name");
-  const fieldLocation = document.getElementById("event-location");
+  const fieldVenue = document.getElementById("event-venue");
+  const fieldCity = document.getElementById("event-city");
   const fieldStart = document.getElementById("event-start");
   const fieldEnd = document.getElementById("event-end");
   const fieldCategory = document.getElementById("event-category");
@@ -272,14 +274,37 @@
     return startMonth <= ym && endMonth >= ym;
   }
 
+  // --- City filter ---
+
+  function populateCityFilter(events) {
+    const cities = new Set();
+    events.forEach((e) => {
+      if (e.city) cities.add(e.city);
+    });
+    const sorted = [...cities].sort();
+    const current = filterCity.value;
+    filterCity.innerHTML = '<option value="all">All Cities</option>';
+    sorted.forEach((city) => {
+      const opt = document.createElement("option");
+      opt.value = city;
+      opt.textContent = city;
+      filterCity.appendChild(opt);
+    });
+    if (sorted.includes(current)) {
+      filterCity.value = current;
+    }
+  }
+
   // --- Rendering ---
 
   function render() {
     const events = loadEvents();
     populateMonthFilter(events);
+    populateCityFilter(events);
     const filter = filterSelect.value;
     const monthFilter = filterMonth.value;
     const catFilter = filterCategory.value;
+    const cityFilter = filterCity.value;
 
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
@@ -290,6 +315,7 @@
       })
       .filter((e) => monthFilter === "all" || eventOverlapsMonth(e, monthFilter))
       .filter((e) => catFilter === "all" || e.category === catFilter)
+      .filter((e) => cityFilter === "all" || e.city === cityFilter)
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
         if (order[a._status] !== order[b._status])
@@ -328,7 +354,7 @@
         <span class="event-card-category">${escapeHtml(event.category || "")}</span>
         <span class="event-card-name">${escapeHtml(event.name)}</span>
         <span class="event-card-date">${formatRangeShort(event.start, event.end)}</span>
-        <span class="event-card-location">${escapeHtml(event.location)}</span>
+        <span class="event-card-location">${escapeHtml(event.venue || "")}${event.city ? ", " + escapeHtml(event.city) : ""}</span>
       `;
 
       eventsGrid.appendChild(card);
@@ -375,8 +401,12 @@
           <span class="detail-value">${formatRange(event.start, event.end)}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Where</span>
-          <span class="detail-value">${escapeHtml(event.location)}</span>
+          <span class="detail-label">Venue</span>
+          <span class="detail-value">${escapeHtml(event.venue || "")}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">City</span>
+          <span class="detail-value">${escapeHtml(event.city || "")}</span>
         </div>
         ${linkHtml}
       </div>
@@ -404,7 +434,8 @@
       modalTitle.textContent = "Edit Event";
       fieldId.value = event.id;
       fieldName.value = event.name;
-      fieldLocation.value = event.location;
+      fieldVenue.value = event.venue || "";
+      fieldCity.value = event.city || "";
       fieldStart.value = event.start;
       fieldEnd.value = event.end;
       fieldCategory.value = event.category || "";
@@ -463,7 +494,8 @@
     const eventData = {
       id,
       name: fieldName.value.trim(),
-      location: fieldLocation.value.trim(),
+      venue: fieldVenue.value.trim(),
+      city: fieldCity.value.trim(),
       category: fieldCategory.value,
       start: fieldStart.value,
       end: fieldEnd.value,
@@ -478,8 +510,8 @@
       eventData.attended = true;
     }
 
-    if (new Date(eventData.end) <= new Date(eventData.start)) {
-      alert("End date must be after start date.");
+    if (new Date(eventData.end) < new Date(eventData.start)) {
+      alert("End date must not be before start date.");
       return;
     }
 
@@ -538,6 +570,7 @@
   filterSelect.addEventListener("change", render);
   filterMonth.addEventListener("change", render);
   filterCategory.addEventListener("change", render);
+  filterCity.addEventListener("change", render);
 
   // --- Export ---
 
