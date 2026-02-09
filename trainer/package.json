@@ -1,0 +1,14 @@
+{
+  "name": "personal-trainer",
+  "version": "1.0.0",
+  "description": "AI-powered personal trainer that generates weekly workout plans",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "express": "^4.18.2"
+  }
+}
