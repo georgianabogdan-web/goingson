@@ -393,26 +393,34 @@
   // --- Fuzzy search ---
 
   function fuzzyMatch(text, query) {
-    // Check if all characters of query appear in text in order
     text = text.toLowerCase();
     query = query.toLowerCase();
-    // First try simple substring (partial match)
+    // Substring match
     if (text.includes(query)) return true;
-    // Then try fuzzy: characters in order, allowing gaps
+    // Fuzzy: characters in order, but at least half must match consecutively
     let ti = 0;
+    let matched = 0;
+    let maxConsecutive = 0;
+    let consecutive = 0;
     for (let qi = 0; qi < query.length; qi++) {
-      while (ti < text.length && text[ti] !== query[qi]) ti++;
+      while (ti < text.length && text[ti] !== query[qi]) { ti++; consecutive = 0; }
       if (ti >= text.length) return false;
+      matched++;
+      consecutive++;
+      maxConsecutive = Math.max(maxConsecutive, consecutive);
       ti++;
     }
-    return true;
+    // Require at least half the query length as a consecutive run
+    return maxConsecutive >= Math.ceil(query.length / 2);
   }
 
   function eventMatchesSearch(event, query) {
     if (!query) return true;
-    const fields = [event.name, event.venue, event.city, event.category, event.details].join(" ");
-    // Split query into words, all must match
-    return query.split(/\s+/).filter(Boolean).every((word) => fuzzyMatch(fields, word));
+    const fields = [event.name || "", event.venue || "", event.city || "", event.category || "", event.details || ""];
+    // Split query into words, all must match at least one field
+    return query.split(/\s+/).filter(Boolean).every((word) =>
+      fields.some((field) => fuzzyMatch(field, word))
+    );
   }
 
   // --- Rendering ---
