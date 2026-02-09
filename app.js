@@ -1,10 +1,8 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "goingson_events";
-
-  // Shared events loaded from events.json
-  let sharedEvents = [];
+  // All events (loaded from server)
+  let events = [];
 
   // DOM elements
   const eventsGrid = document.getElementById("events-grid");
@@ -19,6 +17,7 @@
   const filterCategory = document.getElementById("filter-category");
   const filterCity = document.getElementById("filter-city");
   const cancelBtn = document.getElementById("cancel-btn");
+  const searchInput = document.getElementById("search-input");
   const detailOverlay = document.getElementById("detail-overlay");
   const detailContent = document.getElementById("detail-content");
   const detailClose = document.getElementById("detail-close");
@@ -41,87 +40,50 @@
   // Pending image data URL (set during file selection)
   let pendingImageData = null;
 
-  // --- Data helpers ---
+  // --- API helpers ---
 
-  function loadLocalOverrides() {
+  async function fetchEvents() {
     try {
-      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (!data) return {};
-      // Migrate old format: if it's an array, convert to overrides format
-      if (Array.isArray(data)) {
-        const migrated = { added: data };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-        return migrated;
+      const res = await fetch("/api/events");
+      if (res.ok) {
+        events = await res.json();
+      } else {
+        events = [];
       }
-      return data;
     } catch {
-      return {};
+      events = [];
     }
+    render();
   }
 
-  function saveLocalOverrides(overrides) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
-  }
-
-  function loadEvents() {
-    const overrides = loadLocalOverrides();
-    // Start with shared events, apply local overrides
-    const merged = new Map();
-    sharedEvents.forEach((e) => merged.set(e.id, { ...e }));
-    // Apply overrides: edits, additions, and deletions
-    if (overrides.edits) {
-      Object.entries(overrides.edits).forEach(([id, data]) => {
-        merged.set(id, data);
+  async function saveEvent(eventData) {
+    const exists = events.some((e) => e.id === eventData.id);
+    if (exists) {
+      await fetch("/api/events/" + eventData.id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      });
+    } else {
+      await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
       });
     }
-    if (overrides.added) {
-      overrides.added.forEach((e) => merged.set(e.id, e));
-    }
-    if (overrides.deleted) {
-      overrides.deleted.forEach((id) => merged.delete(id));
-    }
-    return [...merged.values()];
+    await fetchEvents();
   }
 
-  function saveEvent(eventData) {
-    const overrides = loadLocalOverrides();
-    const isShared = sharedEvents.some((e) => e.id === eventData.id);
-    if (isShared) {
-      if (!overrides.edits) overrides.edits = {};
-      overrides.edits[eventData.id] = eventData;
-    } else {
-      if (!overrides.added) overrides.added = [];
-      const idx = overrides.added.findIndex((e) => e.id === eventData.id);
-      if (idx >= 0) {
-        overrides.added[idx] = eventData;
-      } else {
-        overrides.added.push(eventData);
-      }
-    }
-    saveLocalOverrides(overrides);
+  async function deleteEvent(id) {
+    await fetch("/api/events/" + id, { method: "DELETE" });
+    await fetchEvents();
   }
 
-  function deleteEvent(id) {
-    const overrides = loadLocalOverrides();
-    const isShared = sharedEvents.some((e) => e.id === id);
-    if (isShared) {
-      if (!overrides.deleted) overrides.deleted = [];
-      if (!overrides.deleted.includes(id)) overrides.deleted.push(id);
-      if (overrides.edits) delete overrides.edits[id];
-    } else {
-      if (overrides.added) {
-        overrides.added = overrides.added.filter((e) => e.id !== id);
-      }
-    }
-    saveLocalOverrides(overrides);
-  }
-
-  function toggleAttended(id) {
-    const events = loadEvents();
+  async function toggleAttended(id) {
     const event = events.find((e) => e.id === id);
     if (!event) return null;
     event.attended = !event.attended;
-    saveEvent(event);
+    await saveEvent(event);
     return event;
   }
 
@@ -381,9 +343,9 @@
     return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   }
 
-  function populateMonthFilter(events) {
+  function populateMonthFilter(evts) {
     const months = new Set();
-    events.forEach((e) => {
+    evts.forEach((e) => {
       months.add(getEventMonth(e.start));
       months.add(getEventMonth(e.end));
     });
@@ -410,9 +372,9 @@
 
   // --- City filter ---
 
-  function populateCityFilter(events) {
+  function populateCityFilter(evts) {
     const cities = new Set();
-    events.forEach((e) => {
+    evts.forEach((e) => {
       if (e.city) cities.add(e.city);
     });
     const sorted = [...cities].sort();
@@ -429,16 +391,41 @@
     }
   }
 
+  // --- Fuzzy search ---
+
+  function fuzzyMatch(text, query) {
+    // Check if all characters of query appear in text in order
+    text = text.toLowerCase();
+    query = query.toLowerCase();
+    // First try simple substring (partial match)
+    if (text.includes(query)) return true;
+    // Then try fuzzy: characters in order, allowing gaps
+    let ti = 0;
+    for (let qi = 0; qi < query.length; qi++) {
+      while (ti < text.length && text[ti] !== query[qi]) ti++;
+      if (ti >= text.length) return false;
+      ti++;
+    }
+    return true;
+  }
+
+  function eventMatchesSearch(event, query) {
+    if (!query) return true;
+    const fields = [event.name, event.venue, event.city, event.category, event.details].join(" ");
+    // Split query into words, all must match
+    return query.split(/\s+/).filter(Boolean).every((word) => fuzzyMatch(fields, word));
+  }
+
   // --- Rendering ---
 
   function render() {
-    const events = loadEvents();
     populateMonthFilter(events);
     populateCityFilter(events);
     const filter = filterSelect.value;
     const monthFilter = filterMonth.value;
     const catFilter = filterCategory.value;
     const cityFilter = filterCity.value;
+    const searchQuery = searchInput.value.trim();
 
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
@@ -450,6 +437,7 @@
       .filter((e) => monthFilter === "all" || eventOverlapsMonth(e, monthFilter))
       .filter((e) => catFilter === "all" || e.category === catFilter)
       .filter((e) => cityFilter === "all" || e.city === cityFilter)
+      .filter((e) => eventMatchesSearch(e, searchQuery))
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
         if (order[a._status] !== order[b._status])
@@ -613,10 +601,9 @@
     }
   });
 
-  eventForm.addEventListener("submit", (e) => {
+  eventForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const events = loadEvents();
     const id = fieldId.value || generateId();
     // Determine image: use pending if set, otherwise keep existing
     let imageValue;
@@ -651,9 +638,8 @@
       return;
     }
 
-    saveEvent(eventData);
+    await saveEvent(eventData);
     closeModal();
-    render();
   });
 
   // Click card to open detail
@@ -662,24 +648,21 @@
     if (!card) return;
 
     const id = card.dataset.id;
-    const events = loadEvents();
     const event = events.find((ev) => ev.id === id);
     if (event) openDetail(event);
   });
 
   // Edit / Delete from detail overlay
-  detailContent.addEventListener("click", (e) => {
+  detailContent.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
 
     const id = btn.dataset.id;
-    const events = loadEvents();
 
     if (btn.classList.contains("btn-attended")) {
-      const event = toggleAttended(id);
+      const event = await toggleAttended(id);
       if (event) {
         openDetail(event);
-        render();
       }
       return;
     }
@@ -692,9 +675,8 @@
 
     if (btn.classList.contains("btn-danger")) {
       if (!confirm("Delete this event?")) return;
-      deleteEvent(id);
+      await deleteEvent(id);
       closeDetail();
-      render();
     }
   });
 
@@ -707,11 +689,11 @@
   filterMonth.addEventListener("change", render);
   filterCategory.addEventListener("change", render);
   filterCity.addEventListener("change", render);
+  searchInput.addEventListener("input", render);
 
   // --- Export ---
 
   exportBtn.addEventListener("click", () => {
-    const events = loadEvents();
     const json = JSON.stringify(events, null, 2);
     const blob = new Blob([json + "\n"], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -724,14 +706,5 @@
 
   // --- Initial load ---
 
-  fetch("events.json")
-    .then((res) => (res.ok ? res.json() : []))
-    .then((data) => {
-      sharedEvents = data;
-      render();
-    })
-    .catch(() => {
-      sharedEvents = [];
-      render();
-    });
+  fetchEvents();
 })();
