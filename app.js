@@ -8,7 +8,6 @@
   const eventsGrid = document.getElementById("events-grid");
   const noEvents = document.getElementById("no-events");
   const addEventBtn = document.getElementById("add-event-btn");
-  const exportBtn = document.getElementById("export-btn");
   const modalOverlay = document.getElementById("modal-overlay");
   const modalTitle = document.getElementById("modal-title");
   const eventForm = document.getElementById("event-form");
@@ -690,19 +689,6 @@
   filterCategory.addEventListener("change", render);
   filterCity.addEventListener("change", render);
   searchInput.addEventListener("input", render);
-
-  // --- Export ---
-
-  exportBtn.addEventListener("click", () => {
-    const json = JSON.stringify(events, null, 2);
-    const blob = new Blob([json + "\n"], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "events.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  });
 
   // --- Initial load ---
 
