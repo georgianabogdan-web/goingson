@@ -17,6 +17,7 @@
   const filterCategory = document.getElementById("filter-category");
   const filterCity = document.getElementById("filter-city");
   const cancelBtn = document.getElementById("cancel-btn");
+  const searchInput = document.getElementById("search-input");
   const detailOverlay = document.getElementById("detail-overlay");
   const detailContent = document.getElementById("detail-content");
   const detailClose = document.getElementById("detail-close");
@@ -390,6 +391,31 @@
     }
   }
 
+  // --- Fuzzy search ---
+
+  function fuzzyMatch(text, query) {
+    // Check if all characters of query appear in text in order
+    text = text.toLowerCase();
+    query = query.toLowerCase();
+    // First try simple substring (partial match)
+    if (text.includes(query)) return true;
+    // Then try fuzzy: characters in order, allowing gaps
+    let ti = 0;
+    for (let qi = 0; qi < query.length; qi++) {
+      while (ti < text.length && text[ti] !== query[qi]) ti++;
+      if (ti >= text.length) return false;
+      ti++;
+    }
+    return true;
+  }
+
+  function eventMatchesSearch(event, query) {
+    if (!query) return true;
+    const fields = [event.name, event.venue, event.city, event.category, event.details].join(" ");
+    // Split query into words, all must match
+    return query.split(/\s+/).filter(Boolean).every((word) => fuzzyMatch(fields, word));
+  }
+
   // --- Rendering ---
 
   function render() {
@@ -399,6 +425,7 @@
     const monthFilter = filterMonth.value;
     const catFilter = filterCategory.value;
     const cityFilter = filterCity.value;
+    const searchQuery = searchInput.value.trim();
 
     const sorted = events
       .map((e) => ({ ...e, _status: getStatus(e) }))
@@ -410,6 +437,7 @@
       .filter((e) => monthFilter === "all" || eventOverlapsMonth(e, monthFilter))
       .filter((e) => catFilter === "all" || e.category === catFilter)
       .filter((e) => cityFilter === "all" || e.city === cityFilter)
+      .filter((e) => eventMatchesSearch(e, searchQuery))
       .sort((a, b) => {
         const order = { ongoing: 0, upcoming: 1, past: 2 };
         if (order[a._status] !== order[b._status])
@@ -661,6 +689,7 @@
   filterMonth.addEventListener("change", render);
   filterCategory.addEventListener("change", render);
   filterCity.addEventListener("change", render);
+  searchInput.addEventListener("input", render);
 
   // --- Export ---
 
