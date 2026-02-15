@@ -196,6 +196,8 @@ main {
 .card-color-contemporary-dance { background: #0b2e1c; }
 .card-color-movie-festival { background: #2e0b1c; }
 .card-color-music-festival { background: #1e2a0b; }
+.card-color-film-screening { background: #2e2310; }
+.card-color-talk { background: #0b1c2e; }
 
 /* Event card */
 .event-card {
