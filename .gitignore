@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Credentials & tokens - NEVER commit these
+credentials.json
+token.json
+service_account.json
+
+# State
+.last_sync
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
